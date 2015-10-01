@@ -1,0 +1,27 @@
+{
+  "name": "videojs-ooyala",
+  "version": "0.1.0",
+  "description": "Video.js plugin to fetch videos from Ooyala",
+  "author": "Peter Mekhaeil <peter.mekhaeil@news.com.au>",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": "https://github.com/newscorpaus/videojs-ooyala.git",
+  "homepage": "https://github.com/newscorpaus",
+  "keywords": [
+    "videojs",
+    "ooyala",
+    "video",
+    "player"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-contrib-connect": "^0.11.2",
+    "grunt-contrib-jshint": "^0.11.3",
+    "grunt-contrib-uglify": "^0.9.1",
+    "grunt-jscs": "^2.1.0",
+    "video.js": "^4.12.15"
+  },
+  "license": "MIT"
+}
