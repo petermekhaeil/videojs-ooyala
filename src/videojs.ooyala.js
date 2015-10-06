@@ -52,10 +52,6 @@
         return url + '?' + paramsStr;
     },
 
-    isIe9 = function() {
-        return /MSIE 9/i.test(navigator.userAgent);
-    },
-
     isMp4 = function(type) {
         return /mp4/i.test(type);
     },
