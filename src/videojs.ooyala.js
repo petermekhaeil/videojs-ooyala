@@ -41,7 +41,8 @@
                             '<a target="_blank" href="https://get.adobe.com/flashplayer/">' +
                             'https://get.adobe.com/flashplayer/</a>'
             }
-        }
+        },
+        enableHls: false
     },
 
     setUrlParams = function(url, paramsObj) {
@@ -79,13 +80,13 @@
     },
 
     // Return string with supported video formats based on OS/Browser
-    getSupportedFormats = function(player) {
+    getSupportedFormats = function(player, settings) {
 
         var formats = [];
 
         // If the HLS plugin is activated or the device natively supports HLS, we request
         // an m3u8 format video from the Ooyala.
-        if (player.hls || isHlsNativeSupported()) {
+        if (player.hls || isHlsNativeSupported() || settings.enableHls) {
             formats.push('m3u8');
         }
 
@@ -125,7 +126,7 @@
         var urlParams = {
             'device': 'generic',
             'domain': window.location.hostname,
-            'supportedFormats': getSupportedFormats(player),
+            'supportedFormats': getSupportedFormats(player, settings),
             // cache buster
             '_' : (new Date()).getTime()
         },
