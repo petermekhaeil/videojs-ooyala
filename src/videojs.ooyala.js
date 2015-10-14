@@ -336,26 +336,12 @@
                 if (typeof videoUrls.authorized !== 'undefined' && !videoUrls.authorized) {
 
                     var errorMessage = getErrorMessage(videoUrls.code, settings);
-
-                    player.error({
-                        code: errorMessage.code,
-                        headline: errorMessage.headline,
-                        message: errorMessage.message
-                    });
-
                     callback(errorMessage, res);
 
                 // User can't play HLS on non-flash & non-hls-native devices
                 } else if (isIncorrectMediaType(videoUrls.type, videoUrls.src)) {
 
                     var errorMessage = settings.errors.MEDIA_ERR_NO_FLASH;
-
-                    player.error({
-                        code: errorMessage.code,
-                        headline: errorMessage.headline,
-                        message: errorMessage.message
-                    });
-
                     callback(errorMessage, res);
 
                 } else {
