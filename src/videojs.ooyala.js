@@ -96,6 +96,15 @@
         return formats;
     },
 
+    // If a mobileProfile is set and we are a mobile device
+    // We let SAS authorisation know what profile to narrow our streams to
+    supportedVideoProfiles = function(settings) {
+        if (settings.mobileProfile && (videojs.IS_IOS || videojs.IS_ANDROID)) {
+            return settings.mobileProfile;
+        }
+        return null;
+    },
+
     // Custom error messages for the video.js player
     getErrorMessage = function(errorCode, settings) {
         var errorCodeInt = parseInt(errorCode, 10),
@@ -130,7 +139,13 @@
             // cache buster
             '_' : (new Date()).getTime()
         },
-        apiUrl = settings.sasUrl + settings.pcode + '/' + embedCodes,
+        profiles = supportedVideoProfiles(settings);
+
+        if (profiles) {
+            urlParams.profiles = profiles;
+        }
+
+        var apiUrl = settings.sasUrl + settings.pcode + '/' + embedCodes,
         apiUrlWithParams = setUrlParams(apiUrl, urlParams);
 
         return apiUrlWithParams;
