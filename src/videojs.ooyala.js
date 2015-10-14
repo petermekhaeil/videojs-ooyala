@@ -69,14 +69,8 @@
         return videojs.Hls && videojs.Hls.supportsNativeHls;
     },
 
-    // This scenario happens when the video type doesnt match the source url
-    // It occurs when a HLS video is returned from Ooyala but we only asked
-    // for an MP4 (because this is only a HLS video)
-    isIncorrectMediaType = function(type, src) {
-        if (isMp4(type) && isHls(src)) {
-            return true;
-        }
-        return false;
+    requireFlashButNotSupported = function(video) {
+        return isHls(video.src) && !videojs.Flash.isSupported();
     },
 
     // Return string with supported video formats based on OS/Browser
@@ -330,16 +324,16 @@
 
             if (res && res.videoUrls && res.videoUrls[embedCode]) {
 
-                var videoUrls = res.videoUrls[embedCode];
+                var videoData = res.videoUrls[embedCode];
 
                 // An authorisation error was returned from Ooyala
-                if (typeof videoUrls.authorized !== 'undefined' && !videoUrls.authorized) {
+                if (typeof videoData.authorized !== 'undefined' && !videoData.authorized) {
 
-                    var errorMessage = getErrorMessage(videoUrls.code, settings);
+                    var errorMessage = getErrorMessage(videoData.code, settings);
                     callback(errorMessage, res);
 
                 // User can't play HLS on non-flash & non-hls-native devices
-                } else if (isIncorrectMediaType(videoUrls.type, videoUrls.src)) {
+                } else if (requireFlashButNotSupported(videoData)) {
 
                     var errorMessage = settings.errors.MEDIA_ERR_NO_FLASH;
                     callback(errorMessage, res);
