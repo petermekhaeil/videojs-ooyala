@@ -69,8 +69,9 @@
         return videojs.Hls && videojs.Hls.supportsNativeHls;
     },
 
-    requireFlashButNotSupported = function(video) {
-        return isHls(video.src) && !videojs.Flash.isSupported();
+    canPlayHls = function() {
+        // native hls can play + flash support for hls plugins
+        return isHlsNativeSupported() || videojs.Flash.isSupported();
     },
 
     // Return string with supported video formats based on OS/Browser
@@ -333,7 +334,7 @@
                     callback(errorMessage, res);
 
                 // User can't play HLS on non-flash & non-hls-native devices
-                } else if (requireFlashButNotSupported(videoData)) {
+                } else if (isHls(videoData.src) && !canPlayHls()) {
 
                     var errorMessage = settings.errors.MEDIA_ERR_NO_FLASH;
                     callback(errorMessage, res);
