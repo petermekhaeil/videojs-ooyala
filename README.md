@@ -15,7 +15,9 @@ Enable the plugin once your player has been initialised:
 ```js
 player.ooyala({
     playerBrandingId: (String), // Ooyala Player Branding ID (Required)
-    pcode: (String)             // Ooyala Provider ID (Required)
+    pcode: (String),             // Ooyala Provider ID (Required)
+    enableHls: (Boolean),        // Tweak force returning m3u8 from Ooyala if available (Optional)
+    mobileProfile: (String)     // SAS profile to narrow down streams for mobile devices (Optional)
 });
 ```
 

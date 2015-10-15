@@ -3,8 +3,7 @@
     var deliveryTypeToSourceType = {
         mp4: 'video/mp4',
         flv: 'video/flv',
-        hls: 'application/x-mpegURL',
-        f4m: 'application/adobe-f4m'
+        hls: 'application/x-mpegURL'
     },
 
     // List of authorisation (error) codes from Ooyala API
@@ -42,7 +41,8 @@
                             '<a target="_blank" href="https://get.adobe.com/flashplayer/">' +
                             'https://get.adobe.com/flashplayer/</a>'
             }
-        }
+        },
+        enableHls: false
     },
 
     setUrlParams = function(url, paramsObj) {
@@ -53,20 +53,12 @@
         return url + '?' + paramsStr;
     },
 
-    isIe9 = function() {
-        return /MSIE 9/i.test(navigator.userAgent);
-    },
-
     isMp4 = function(type) {
         return /mp4/i.test(type);
     },
 
     isFlv = function(type) {
         return (/\.flv$/i).test(type);
-    },
-
-    isF4m = function(type) {
-        return (/\.f4m/i).test(type);
     },
 
     isHls = function(type) {
@@ -77,35 +69,35 @@
         return videojs.Hls && videojs.Hls.supportsNativeHls;
     },
 
-    // This scenario happens when the video type doesnt match the source url
-    // It occurs when a HLS video is returned from Ooyala but we only asked
-    // for an MP4 (because this is only a HLS video)
-    isIncorrectMediaType = function(type, src) {
-        if (isMp4(type)) {
-            if (isHls(src) || isF4m(src)) {
-                return true;
-            }
-        }
-        return false;
+    canPlayHls = function() {
+        // native hls can play + flash support for hls plugins
+        return isHlsNativeSupported() || videojs.Flash.isSupported();
     },
 
     // Return string with supported video formats based on OS/Browser
-    getSupportedFormats = function(player) {
+    getSupportedFormats = function(player, settings) {
 
         var formats = [];
 
         // If the HLS plugin is activated or the device natively supports HLS, we request
         // an m3u8 format video from the Ooyala.
-        if (isIe9()) {
-            formats.push('hls');
-        } else if (player.hls || isHlsNativeSupported()) {
+        if (player.hls || isHlsNativeSupported() || settings.enableHls) {
             formats.push('m3u8');
         }
 
-        // Otherwise, MP4.
+        // always ask for MP4.
         formats.push('mp4');
 
         return formats;
+    },
+
+    // If a mobileProfile is set and we are a mobile device
+    // We let SAS authorisation know what profile to narrow our streams to
+    supportedVideoProfiles = function(settings) {
+        if (settings.mobileProfile && (videojs.IS_IOS || videojs.IS_ANDROID)) {
+            return settings.mobileProfile;
+        }
+        return null;
     },
 
     // Custom error messages for the video.js player
@@ -136,13 +128,19 @@
     // Generate the correct url for the API call
     ooyalaApiUrl = function(player, settings, embedCodes) {
         var urlParams = {
-            'device': 'html5',
+            'device': 'generic',
             'domain': window.location.hostname,
-            'supportedFormats': getSupportedFormats(player),
+            'supportedFormats': getSupportedFormats(player, settings),
             // cache buster
             '_' : (new Date()).getTime()
         },
-        apiUrl = settings.sasUrl + settings.pcode + '/' + embedCodes,
+        profiles = supportedVideoProfiles(settings);
+
+        if (profiles) {
+            urlParams.profiles = profiles;
+        }
+
+        var apiUrl = settings.sasUrl + settings.pcode + '/' + embedCodes,
         apiUrlWithParams = setUrlParams(apiUrl, urlParams);
 
         return apiUrlWithParams;
@@ -196,13 +194,6 @@
             } else if (isFlv(videoSrc)) {
                 videoType = deliveryTypeToSourceType.flv;
             //
-            // Video.js HLS plugin doesn't support IE9
-            // We will set the video type to 'application/adobe-f4m' for another external plugin
-            // to take care of the rest.
-            //
-            } else if (isIe9()) {
-                videoType = deliveryTypeToSourceType.f4m;
-            //
             //  .m3u8 content needs to be HLS
             //
             } else if (isHls(videoSrc)) {
@@ -212,11 +203,11 @@
             //
             //  Store this information for callback
             //
-            videoUrls[key] = {
+            videoUrls[key] = videojs.util.mergeOptions(videoStream, {
                 authorized: thisVideoData.authorized,
                 type: videoType,
                 src: videoSrc
-            };
+            });
 
         });
 
@@ -325,6 +316,40 @@
         };
 
         /**
+         * Retrieve video source but return to callback after verifying that we are
+         * are authorised to use the video source
+         * Public function so you can use it with getVideoSource and then decide what you
+         * want to do with the video URLs
+         */
+        player.ooyala.prepareSettingSource = function(embedCode, res, callback) {
+
+            if (res && res.videoUrls && res.videoUrls[embedCode]) {
+
+                var videoData = res.videoUrls[embedCode];
+
+                // An authorisation error was returned from Ooyala
+                if (typeof videoData.authorized !== 'undefined' && !videoData.authorized) {
+
+                    var errorMessage = getErrorMessage(videoData.code, settings);
+                    callback(errorMessage, res);
+
+                // User can't play HLS on non-flash & non-hls-native devices
+                } else if (isHls(videoData.src) && !canPlayHls()) {
+
+                    var errorMessage = settings.errors.MEDIA_ERR_NO_FLASH;
+                    callback(errorMessage, res);
+
+                } else {
+
+                    player.error(null);
+                    callback(null, res);
+
+                }
+            }
+
+        };
+
+        /**
          * Retrieve video source and set straight to video player
          *
          * @param {string} embedCode - The Ooyala video EmbedCode.
@@ -339,51 +364,22 @@
                 return false;
             }
 
-            player.ooyala.getVideoSource(embedCode, function(err, res) {
-
-                if (res && res.videoUrls && res.videoUrls[embedCode]) {
-
-                    var videoUrls = res.videoUrls[embedCode];
-
-                    // An authorisation error was returned from Ooyala
-                    if (typeof videoUrls.authorized !== 'undefined' && !videoUrls.authorized) {
-
-                        var errorMessage = getErrorMessage(videoUrls.code, settings);
-
-                        player.error({
-                            code: errorMessage.code,
-                            headline: errorMessage.headline,
-                            message: errorMessage.message
-                        });
-
-                    // User can't play HLS on non-flash & non-hls-native devices
-                    } else if (isIncorrectMediaType(videoUrls.type, videoUrls.src)) {
-
-                        var errorMessage = settings.errors.MEDIA_ERR_NO_FLASH;
-
-                        player.error({
-                            code: errorMessage.code,
-                            headline: errorMessage.headline,
-                            message: errorMessage.message
-                        });
-
-                    } else {
-
-                        player.error(null);
-
+            player.ooyala.getVideoSource(embedCode, function(getVideoSourceError, getVideoSourceResult) {
+                player.ooyala.prepareSettingSource(embedCode, getVideoSourceResult, function(callbackErr, callbackRes) {
+                    if (callbackRes) {
                         player.src({
-                            type: videoUrls.type,
-                            src: videoUrls.src
+                            type: callbackRes.type,
+                            src: callbackRes.src
                         });
-
                     }
-                }
 
-                if (callback) {
-                    callback(null, res);
-                }
-
+                    if (callback) {
+                        callback(callbackErr, getVideoSourceResult);
+                    }
+                });
             });
+
+
 
         };
     };
