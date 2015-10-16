@@ -242,14 +242,32 @@
                 return false;
             }
 
-            var url = ooyalaApiUrl(player, settings, embedCodes);
+            var options = {
+                uri: ooyalaApiUrl(player, settings, embedCodes)
+            },
 
-            // Call ooyala's API to get the url of the video source
-            videojs.xhr(url, function(error, response, responseBody) {
+            callbackFn = function(error, response, responseBody) {
 
-                var jsonResponse = JSON.parse(responseBody),
+                var jsonResponse;
+
+                if (error || !responseBody) {
+
+                    window.setTimeout(function() {
+                        videojs.xhr(options, callbackFn);
+                    }, 500);
+
+                    return false;
+                }
+
+                try {
+                    jsonResponse = JSON.parse(responseBody);
+                } catch (e) {
+                    videojs.xhr(options, callbackFn);
+                    return false;
+                }
+
                     // jscs:disable
-                    authorizationData = jsonResponse.authorization_data,
+                var authorizationData = jsonResponse.authorization_data,
                     // jscs:enable
                     videoUrls = getVideoUrlsFromAuthorizationData(authorizationData);
 
@@ -261,7 +279,10 @@
                     callback(null, result);
                 }
 
-            });
+            };
+
+            // Call ooyala's API to get the url of the video source
+            videojs.xhr(options, callbackFn);
         };
 
         /**
@@ -365,6 +386,11 @@
             }
 
             player.ooyala.getVideoSource(embedCode, function(getVideoSourceError, getVideoSourceResult) {
+
+                if (getVideoSourceError) {
+                    return callback(getVideoSourceError, null);
+                }
+
                 player.ooyala.prepareSettingSource(embedCode, getVideoSourceResult, function(callbackErr, callbackRes) {
                     if (callbackRes) {
                         player.src({
@@ -377,9 +403,8 @@
                         callback(callbackErr, getVideoSourceResult);
                     }
                 });
+
             });
-
-
 
         };
     };
