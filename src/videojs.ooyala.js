@@ -259,8 +259,7 @@
             }
 
             var options = {
-                uri: ooyalaApiUrl(player, settings, embedCodes),
-                timeout: 1
+                uri: ooyalaApiUrl(player, settings, embedCodes)
             },
 
             timeoutAttempts = 0,
