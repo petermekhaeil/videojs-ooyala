@@ -40,9 +40,25 @@
                 message:    'To play this content please download it at ' +
                             '<a target="_blank" href="https://get.adobe.com/flashplayer/">' +
                             'https://get.adobe.com/flashplayer/</a>'
+            },
+            MEDIA_ERR_XHR_TIMEOUT: {
+                code:       'MEDIA_ERR_XHR_TIMEOUT',
+                headline:   'The video connection was lost',
+                message:    'Please check your internet connection and try again'
+            },
+            MEDIA_ERR_XHR_PARSE_FAILED: {
+                code:       'MEDIA_ERR_XHR_PARSE_FAILED',
+                headline:   'The video connection was lost',
+                message:    'Please check your internet connection and try again'
+            },
+            MISSING_OOYALA_VIDEO_ID: {
+                code:       'MISSING_OOYALA_VIDEO_ID',
+                headline:   '',
+                message:    'Missing ooyala video ID to load through Ooyala Plugin'
             }
         },
-        enableHls: false
+        enableHls: false,
+        maxXhrAttempts: 3
     },
 
     setUrlParams = function(url, paramsObj) {
@@ -237,24 +253,35 @@
 
             if (!embedCodes) {
                 if (callback) {
-                    callback('Missing embedCodes to load through Ooyala Plugin', null);
+                    callback(settings.errors.MISSING_OOYALA_VIDEO_ID, null);
                 }
                 return false;
             }
 
             var options = {
-                uri: ooyalaApiUrl(player, settings, embedCodes)
+                uri: ooyalaApiUrl(player, settings, embedCodes),
+                timeout: 1
             },
+
+            timeoutAttempts = 0,
 
             callbackFn = function(error, response, responseBody) {
 
                 var jsonResponse;
 
+                // XHR returns an error or not response body
                 if (error || !responseBody) {
 
-                    window.setTimeout(function() {
-                        videojs.xhr(options, callbackFn);
-                    }, 500);
+                    // retry a few times before giving up and returning an error callback
+                    timeoutAttempts++;
+                    if (timeoutAttempts <= settings.maxXhrAttempts) {
+                        window.setTimeout(function() {
+                            timeoutAttempts++;
+                            videojs.xhr(options, callbackFn);
+                        }, 500);
+                    } else {
+                        callback(settings.errors.MEDIA_ERR_XHR_TIMEOUT, null);
+                    }
 
                     return false;
                 }
@@ -262,7 +289,15 @@
                 try {
                     jsonResponse = JSON.parse(responseBody);
                 } catch (e) {
-                    videojs.xhr(options, callbackFn);
+                    // Failed at parsing json object in response body
+                    // We will retry the XHR a few more times before giving up
+                    // and returning an error callback
+                    timeoutAttempts++;
+                    if (timeoutAttempts <= settings.maxXhrAttempts) {
+                        videojs.xhr(options, callbackFn);
+                    } else {
+                        callback(settings.errors.MEDIA_ERR_XHR_PARSE_FAILED, null);
+                    }
                     return false;
                 }
 
@@ -295,7 +330,7 @@
 
             if (!embedCodes) {
                 if (callback) {
-                    callback('Missing embedCodes to load through Ooyala Plugin', null);
+                    callback(settings.errors.MISSING_OOYALA_VIDEO_ID, null);
                 }
                 return false;
             }
@@ -357,8 +392,7 @@
                 // User can't play HLS on non-flash & non-hls-native devices
                 } else if (isHls(videoData.src) && !canPlayHls()) {
 
-                    var errorMessage = settings.errors.MEDIA_ERR_NO_FLASH;
-                    callback(errorMessage, res);
+                    callback(settings.errors.MEDIA_ERR_NO_FLASH, res);
 
                 } else {
 
@@ -380,7 +414,7 @@
 
             if (!embedCode) {
                 if (callback) {
-                    callback('Missing embedCode to set source', null);
+                    callback(settings.errors.MISSING_OOYALA_VIDEO_ID, null);
                 }
                 return false;
             }
