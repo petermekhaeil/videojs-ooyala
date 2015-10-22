@@ -58,7 +58,8 @@
             }
         },
         enableHls: false,
-        maxXhrAttempts: 3
+        maxXhrAttempts: 3,
+        xhrTimeout: 45 * 1000
     },
 
     setUrlParams = function(url, paramsObj) {
@@ -259,7 +260,8 @@
             }
 
             var options = {
-                uri: ooyalaApiUrl(player, settings, embedCodes)
+                uri: ooyalaApiUrl(player, settings, embedCodes),
+                timeout: settings.xhrTimeout
             },
 
             timeoutAttempts = 0,
