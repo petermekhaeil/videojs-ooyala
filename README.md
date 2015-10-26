@@ -112,9 +112,13 @@ We appreciate that all contribution follow our style guide set in our JSHint and
 
 ## History
 
-### v0.1.0
-* First release
+### v0.3.0
+* Retry XHR calls on timeout
+* Add video.js error messages on failed XHR calls
 
 ### v0.2.0
 * Add enableHls and mobileProfile option.
 * Add prepareSettingSource() to allow developer to prepare video source before setting to video player.
+
+### v0.1.0
+* First release
